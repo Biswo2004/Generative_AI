@@ -27,5 +27,3 @@ A modular, production-ready framework for building generative AI applications us
 
 ---
 
-## 📁 Project Structure
-
