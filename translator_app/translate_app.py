@@ -43,8 +43,8 @@ if "GROQ_API_KEY" in st.session_state and st.session_state["GROQ_API_KEY"]:
 
     # 📝 Input Section
     col1, col2 = st.columns(2)
-    source_lang = col1.selectbox("Source Language", ["English", "French", "Spanish", "German", "Hindi", "Japanese", "Chinese"])
-    target_lang = col2.selectbox("Target Language", ["English", "French", "Spanish", "German", "Hindi", "Japanese", "Chinese"])
+    source_lang = col1.selectbox("Source Language", ["English", "French", "Spanish", "German", "Hindi", "Japanese", "Chinese","Odia"])
+    target_lang = col2.selectbox("Target Language", ["English", "French", "Spanish", "German", "Hindi", "Japanese", "Chinese","Odia"])
 
     text = st.text_area("✏️ Enter text to translate", "", height=120, placeholder="Type your text here...")
 
