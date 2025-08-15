@@ -5,6 +5,13 @@ This app allows users to translate text between multiple languages instantly aft
 
 ---
 
+## 🔗 Live Demo
+[**Click here to try the app**](https://language-translator-app-genai-metaworkforce.streamlit.app/)  
+
+> Replace the above link with your actual Streamlit Cloud deployment link.
+
+---
+
 ## 🚀 Features
 - **Sidebar API Key Input** – Securely enter your Groq API key before starting.
 - **Instant Translation** – Uses Groq’s powerful LLM for quick and accurate translations.
