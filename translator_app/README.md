@@ -8,7 +8,6 @@ This app allows users to translate text between multiple languages instantly aft
 ## 🔗 Live Demo
 [**Click here to try the app**](https://language-translator-app-genai-metaworkforce.streamlit.app/)  
 
-> Replace the above link with your actual Streamlit Cloud deployment link.
 
 ---
 
