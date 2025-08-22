@@ -1,101 +1,104 @@
 import streamlit as st
+from pathlib import Path
+from urllib.parse import quote_plus
+import sqlite3
+from sqlalchemy import create_engine
 from langchain_groq import ChatGroq
-from langchain.chains import LLMMathChain, LLMChain
-from langchain.prompts import PromptTemplate
-from langchain_community.utilities import WikipediaAPIWrapper
+from langchain.sql_database import SQLDatabase
+from langchain.agents import create_sql_agent
 from langchain.agents.agent_types import AgentType
-from langchain.agents import Tool,initialize_agent
-from dotenv import load_dotenv
+from langchain.agents.agent_toolkits import SQLDatabaseToolkit
 from langchain.callbacks import StreamlitCallbackHandler
 
-##Set up the Streamlit app
-st.set_page_config(page_title="MathsGPT:A complete solution of Mathematical problems and Data Research", page_icon=":guardsman:", layout="wide")
-st.title("MathsGPT: A complete solution of Mathematical problems and Data Research")
+# Page setup
+st.set_page_config(page_title="Langchain: Chat with SQL DB", page_icon="🗄️")
+st.title("🗄️ Langchain: Chat with SQL Database")
 
-groq_api_key = st.sidebar.text_input(label="Enter your Groq API Key", type="password", placeholder="Paste your Groq API key here...")
+# Constants
+LOCALDB = "USE_LOCALDB"
+MYSQLDB = "USE_MYSQLDB"
 
-if not groq_api_key:
-    st.info("Please add your Groq API key to continue.")
+# Sidebar inputs
+api_key = st.sidebar.text_input("Groq API Key", type="password")
+
+if not api_key:
+    st.error("Please provide your Groq API Key.")
     st.stop()
 
-llm = ChatGroq(model="gemma2-9b-it",api_key=groq_api_key)
-wikipedia_wrapper = WikipediaAPIWrapper()
+radio_option = st.sidebar.radio("Select Database", (LOCALDB, MYSQLDB))
 
-wikipedia_tool = Tool(
-    name="Wikipedia",
-    description="Useful for looking up information on Wikipedia.",
-    func=wikipedia_wrapper.run,
-    return_direct=True
+if radio_option == MYSQLDB:
+    db_url = MYSQLDB
+    mysql_host = st.sidebar.text_input("Provide your SQL Host")
+    mysql_user = st.sidebar.text_input("Provide your SQL User")
+    mysql_password = st.sidebar.text_input("Provide your SQL Password", type="password")
+    mysql_db = st.sidebar.text_input("Provide your SQL Database Name")
+else:
+    db_url = LOCALDB
+
+# LLM setup
+llm = ChatGroq(
+    groq_api_key=api_key,
+    model_name="llama-3.3-70b-versatile",
+    streaming=True
 )
 
-## Intialize the Math tool
-math_chain = LLMMathChain.from_llm(llm)
-calculation_tool = Tool(
-    name="Calculator",
-    description="Useful for performing mathematical calculations.",
-    func=math_chain.run,
-    return_direct=True
-)
+# Database configuration
+@st.cache_resource(ttl="2h")
+def configure_db(db_url, mysql_host=None, mysql_user=None, mysql_password=None, mysql_db=None):
+    try:
+        if db_url == LOCALDB:
+            dbfilepath = (Path(__file__).parent / "student.db").absolute()
+            creator = lambda: sqlite3.connect(f"file:{dbfilepath}?mode=ro", uri=True)
+            return SQLDatabase(create_engine("sqlite:///", creator=creator))
 
-prompt ="""You are a agent tasked for solving user's mathematical problems. Logically arrive at the solution using the tools available to you and display the final answer pointwise for each step for the question below.
-Question:{question}
-Answer: 
-"""
+        elif db_url == MYSQLDB:
+            if not all([mysql_host, mysql_user, mysql_password, mysql_db]):
+                st.error("Please provide all MySQL connection details.")
+                st.stop()
 
-prompt_template = PromptTemplate(
-    template=prompt,
-    input_variables=["question"]
-)
+            encoded_password = quote_plus(mysql_password)
+            connection_str = f"mysql+pymysql://{mysql_user}:{encoded_password}@{mysql_host}/{mysql_db}"
+            engine = create_engine(connection_str)
+            return SQLDatabase(engine)
 
-## Combine all the tools into chain
-chain = LLMChain(
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
+        st.stop()
+
+# Initialize database
+db = configure_db(db_url, mysql_host, mysql_user, mysql_password, mysql_db) if db_url == MYSQLDB else configure_db(db_url)
+
+# Agent setup
+toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+agent = create_sql_agent(
     llm=llm,
-    prompt=prompt_template
-)
-reasoning_tool = Tool(
-    name="Reasoning Chain",
-    description="Useful for performing logical reasoning.",
-    func=chain.run,
-    return_direct=True
-)
-
-## Intialize the agents
-assistant_agent = initialize_agent(
-    tools=[wikipedia_tool, calculation_tool, reasoning_tool],
-    llm=llm,
+    toolkit=toolkit,
+    verbose=True,
     agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-    verbose=False,
-    handle_parsing_errors=True
 )
 
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [
-        {"role": "assistant", "content": "Hi, I am MathsGPT, your assistant for mathematical problems and data research."}
-    ]
+# Chat history
+if "messages" not in st.session_state or st.sidebar.button("Clear message history"):
+    st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
 
 for msg in st.session_state.messages:
-    st.chat_message(msg["role"]).write(msg["content"])
+    st.chat_message(msg["role"]).markdown(msg["content"])
 
-## Function to generate the response
-def generate_response(question):
-    response = assistant_agent.invoke(
-        {"input": question}
-    )
-    return response
+# User query handling
+user_query = st.chat_input("Ask something about your database:")
 
-## Lets start the interaction
-question = st.text_area("Enter your question here:")
+if user_query:
+    st.session_state.messages.append({"role": "user", "content": user_query})
+    st.chat_message("user").write(user_query)
 
-if st.button("Find my answer"):
-    if question:
-        with st.spinner("Generating response..."):
-            response = generate_response(question)
-            st.session_state.messages.append({"role": "user", "content": question})
-            st.chat_message("user").write(question)
-            st_cb = StreamlitCallbackHandler(st.container(),expand_new_thoughts=False)
-            response = assistant_agent.run(st.session_state.messages,callbacks=[st_cb])
+    with st.chat_message("assistant"):
+        try:
+            streamlit_callback = StreamlitCallbackHandler(st.container())
+            response = agent.run(user_query, callbacks=[streamlit_callback])
             st.session_state.messages.append({"role": "assistant", "content": response})
-            st.success("Response generated successfully!")
             st.write(response)
-else:
-    st.warning("Please enter a question to find an answer.")
+        except Exception as e:
+            error_msg = f"Query failed: {e}"
+            st.session_state.messages.append({"role": "assistant", "content": error_msg})
+            st.error(error_msg)
