@@ -58,7 +58,14 @@ def configure_db(db_url, mysql_host=None, mysql_user=None, mysql_password=None, 
                 st.stop()
 
             encoded_password = quote_plus(mysql_password)
-            connection_str = f"mysql+pymysql://{mysql_user}:{encoded_password}@{mysql_host}/{mysql_db}"
+
+            # Split host:port if provided
+            if ":" in mysql_host:
+                host, port = mysql_host.split(":")
+                connection_str = f"mysql+pymysql://{mysql_user}:{encoded_password}@{host}:{port}/{mysql_db}"
+            else:
+                connection_str = f"mysql+pymysql://{mysql_user}:{encoded_password}@{mysql_host}/{mysql_db}"
+
             engine = create_engine(connection_str)
             return SQLDatabase(engine)
 
