@@ -63,6 +63,7 @@ def configure_db(db_url, mysql_host=None, mysql_user=None, mysql_password=None, 
             host = host_port[0]
             port = int(host_port[1]) if len(host_port) > 1 else 3306
             connection_str = f"mysql+pymysql://{mysql_user}:{encoded_password}@{host}:{port}/{mysql_db}"
+            st.write(f"Connecting to MySQL using host={host}, port={port}")
             engine = create_engine(connection_str)
             return SQLDatabase(engine)
 
