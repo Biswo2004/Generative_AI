@@ -58,15 +58,7 @@ def configure_db(db_url, mysql_host=None, mysql_user=None, mysql_password=None, 
                 st.stop()
 
             encoded_password = quote_plus(mysql_password)
-            # Parse host and optional port
-            host_port = mysql_host.split(":")
-            host = host_port[0]
-            port = int(host_port[1]) if len(host_port) > 1 else 3306
-            # Prefer IPv4 loopback to avoid IPv6 issues
-            if host == "localhost":
-                host = "127.0.0.1"
-            connection_str = f"mysql+pymysql://{mysql_user}:{encoded_password}@{host}:{port}/{mysql_db}"
-            st.write(f"Connecting to MySQL using host={host}, port={port}")
+            connection_str = f"mysql+pymysql://{mysql_user}:{encoded_password}@{mysql_host}/{mysql_db}"
             engine = create_engine(connection_str)
             return SQLDatabase(engine)
 
