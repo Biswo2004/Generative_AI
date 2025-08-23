@@ -2,6 +2,8 @@
 
 A Streamlit app that lets you chat with either a local SQLite database or a remote MySQL database using LLM-powered agents. Easily switch database backends, and leverage Langchain + Groq for smart data queries!
 
+🌐 **Live Demo:** [Chat with SQL DB App](https://chat-with-sqldb-metaworkforce.streamlit.app/)
+
 ## 🔥 Features
 
 - **Chat with SQL** – Ask questions about your database in natural language
@@ -41,7 +43,12 @@ Commit all your source files, including `student.db` (see `.gitignore` below).
 - Select the database:  
   - **Local SQLite:** No setup needed if `student.db` is in repo  
   - **Remote MySQL:** Enter host, username, password (can be stored as Streamlit secrets for security)
-- Start chatting with your DB!
+
+⚠️ **Important Note on MySQL (Streamlit Cloud Limitation)**  
+Since Streamlit apps are deployed on **Streamlit Cloud**, they **cannot connect to your local MySQL instance** (`localhost`, `127.0.0.1`, or custom ports like `3309`).  
+To use MySQL with the cloud app, you must connect to a **cloud-hosted MySQL service** (e.g., PlanetScale, AWS RDS, Google Cloud SQL, Azure MySQL, Railway).  
+If you just want to test locally, you can connect to your own MySQL on `localhost`.  
+On Streamlit Cloud, only **SQLite** (bundled `student.db`) will work out of the box.  
 
 ### 7. Environment Variables / Secrets (Recommended)
 For MySQL and Groq API, on Streamlit Cloud or locally, you can use secrets:
@@ -55,7 +62,7 @@ Update your code to read these if you want auto-fetch (optional).
 
 ### 8. Troubleshooting
 
-- **Database connection failed:** Check you provided all fields in the sidebar
+- **Database connection failed:** Check you provided all fields in the sidebar. If you are on Streamlit Cloud and trying to connect to `localhost`, remember this is not supported — use SQLite or a cloud MySQL provider.  
 - **student.db missing:** Run `sqlite.py`, confirm file is there and tracked by git
 - **Dependency errors:** Each required lib must be in `requirements.txt`
 
@@ -63,5 +70,3 @@ Update your code to read these if you want auto-fetch (optional).
 
 ## 📝 License
 MIT (or your choice)
-
-
