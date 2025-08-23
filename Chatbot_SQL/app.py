@@ -48,14 +48,9 @@ llm = ChatGroq(
 def configure_db(db_url, mysql_host=None, mysql_user=None, mysql_password=None, mysql_db=None):
     try:
         if db_url == LOCALDB:
-            dbfilepath = Path("student.db").resolve()
-            if not dbfilepath.exists():
-                st.error("SQLite file 'student.db' not found. Please upload or include it in your repo.")
-                st.stop()
-
+            dbfilepath = (Path(__file__).parent / "student.db").absolute()
             creator = lambda: sqlite3.connect(f"file:{dbfilepath}?mode=ro", uri=True)
-            return SQLDatabase(create_engine("sqlite://", creator=creator))
-
+            return SQLDatabase(create_engine("sqlite:///", creator=creator))
 
         elif db_url == MYSQLDB:
             if not all([mysql_host, mysql_user, mysql_password, mysql_db]):
