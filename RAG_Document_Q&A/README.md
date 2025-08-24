@@ -1,6 +1,5 @@
 # 📚 Research Paper Q&A Chatbot
 
-> 🔗 **Live App Preview:** [Click to Open Streamlit App](https://chatgpt.com/c/68ab05b3-4ec0-8322-b349-72e108ff6013)
 
 A **Streamlit-based RAG (Retrieval-Augmented Generation) Chatbot** that allows users to upload research papers (PDF) and ask questions based on their content. Powered by **Groq LLM** and **OpenAI embeddings**, it supports **English** and **Hindi**, voice input, and text-to-speech (TTS) responses.
 
