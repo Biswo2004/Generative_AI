@@ -21,6 +21,9 @@ A **Streamlit-based RAG (Retrieval-Augmented Generation) Chatbot** that allows u
 
 ## ⚠️ Notes
 
+- This project uses **OpenAI embeddings**, so an **OpenAI API key is mandatory**.
+- OpenAI usage may incur a **minimum cost of $5 USD**, which typically amounts to **₹500–₹550 INR** after forex charges.If you are comfortable to pay that much amount then head to (https://platform.openai.com/docs/api-reference/introduction) and signup
+- 💡 If you prefer a free alternative, you can switch to Ollama or Hugging Face embedding models. These options work well for local or open-source setups and can be integrated with FAISS or other vector stores.
 - Ensure your **microphone** is working for voice input.
 - Only **PDF files** are supported.
 - Groq API key must be valid and start with `gsk_`.
@@ -65,8 +68,8 @@ A **Streamlit-based RAG (Retrieval-Augmented Generation) Chatbot** that allows u
    streamlit run app.py
    ```
 
-2. Enter your **Groq API Key** in the sidebar.
-   * Must start with `gsk_`.
+2. Enter your **Groq API Key** and **OpenAI API Key** in the sidebar.
+   * Groq key must start with `gsk_`.
 
 3. Select your **language** (English or Hindi).
 
@@ -95,7 +98,7 @@ A **Streamlit-based RAG (Retrieval-Augmented Generation) Chatbot** that allows u
 ## 🧩 Code Overview
 
 1. **Environment Setup:** Loads `.env` and API keys.
-2. **Sidebar:** Groq API key input, language toggle, chat history.
+2. **Sidebar:** Groq API key input, OpenAI key input, language toggle, chat history.
 3. **Main UI:** Title, subtitle, file uploader with gradient styling.
 4. **Vector Embeddings:** Uses OpenAI embeddings & FAISS for semantic search.
 5. **Groq LLM:** Generates answers based on context.
