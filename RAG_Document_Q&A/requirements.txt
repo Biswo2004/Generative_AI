@@ -11,4 +11,3 @@ gTTS
 pydub
 numpy
 pandas
-pyaudio
