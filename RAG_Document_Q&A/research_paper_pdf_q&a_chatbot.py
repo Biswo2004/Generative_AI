@@ -19,13 +19,12 @@ from io import BytesIO
 
 # 🌱 Load environment variables
 load_dotenv()
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # 🎨 Page config
 st.set_page_config(page_title="RAG Chatbot", page_icon="📚", layout="wide")
 
 # ------------------------------
-# 🌟 Sidebar UI & Groq API Key
+# 🌟 Sidebar UI & API Keys
 # ------------------------------
 st.markdown("""
 <style>
@@ -41,27 +40,40 @@ st.markdown("""
 }
 .stButton>button {
     background: linear-gradient(to right, #FF512F, #DD2476);
-    color: white;
+    color: white;          /* normal text color */
     font-weight: bold;
     border-radius: 10px;
     padding: 12px 24px;
+    transition: all 0.3s ease;
 }
+
 .stButton>button:hover {
-    background: linear-gradient(to right, #DD2476, #FF512F);
-    color: black;
+    background: linear-gradient(to right, #FF512F, #DD2476);  /* keep same gradient */
+    color: black;          /* text color on hover */
 }
+
 </style>
 """, unsafe_allow_html=True)
 
+# 🟢 Groq API Key
 groq_api_key = st.sidebar.text_input("🔑 Enter your Groq API Key", type="password")
-if not groq_api_key:
-    st.info("Please enter the Groq API Key to proceed.")
-    st.stop()
-elif not groq_api_key.startswith("gsk_"):
-    st.warning("❌ Invalid Groq API Key. Must start with 'gsk_'.")
+if groq_api_key and not groq_api_key.startswith("gsk_"):
+    st.sidebar.warning("❌ Invalid Groq API Key. Must start with 'gsk_'.")
+    groq_api_key = None
+
+# 🟢 OpenAI API Key
+openai_api_key = st.sidebar.text_input("🔑 Enter your OpenAI API Key", type="password")
+if openai_api_key and not openai_api_key.startswith("sk-"):
+    st.sidebar.warning("❌ Invalid OpenAI API Key. Must start with 'sk-'.")
+    openai_api_key = None
+
+# ✅ Check both keys before proceeding
+if not groq_api_key or not openai_api_key:
+    st.info("Please enter **both** Groq and OpenAI API Keys to proceed.")
     st.stop()
 else:
     os.environ["GROQ_API_KEY"] = groq_api_key
+    os.environ["OPENAI_API_KEY"] = openai_api_key
 
 # ------------------------------
 # 🌍 Language Toggle
