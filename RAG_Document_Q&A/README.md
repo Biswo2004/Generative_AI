@@ -5,6 +5,13 @@ A **Streamlit-based RAG (Retrieval-Augmented Generation) Chatbot** that allows u
 
 ---
 
+🎥 Check out the **video preview** and announcement post on LinkedIn:  
+[🚀 Research Paper Q&A Chatbot – LinkedIn Demo](https://www.linkedin.com/feed/update/urn:li:activity:7365394386513301504/)
+
+This post includes a walkthrough of the app in action, key features, and how it empowers research workflows using AI.
+
+---
+
 ## 🌟 Features
 
 - Upload multiple **PDF research papers** for analysis.
