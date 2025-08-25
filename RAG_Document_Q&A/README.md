@@ -21,7 +21,7 @@ This post includes a walkthrough of the app in action, key features, and how it 
 - **Semantic search** using OpenAI embeddings and FAISS vector store.
 - **Groq LLM** integration for fast, accurate responses.
 - Maintain **chat history** with timestamps and ability to clear it.
-- **Document similarity view** to check referenced content.
+- **Document similarity view** to check referenced content with FAISS.
 
 ---
 
