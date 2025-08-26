@@ -5,7 +5,7 @@ A **Streamlit-based AI Search Engine** that allows users to explore knowledge fr
 ---
 
 🎥 **Demo Preview:**  
-🚀 [Smart AI Search Engine – Demo](#) *(Replace with actual link if available)*  
+🚀 [Smart AI Search Engine – Demo](#)  
 
 This demo showcases the app in action, key features, and how it enables AI-powered research and knowledge exploration.
 
