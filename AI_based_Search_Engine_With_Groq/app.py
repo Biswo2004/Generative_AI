@@ -227,6 +227,13 @@ a:hover {{ text-decoration:underline; }}
 st.markdown("<h1>Smart AI-Based Search Engine Powered by Groq</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Explore knowledge from Arxiv, Wikipedia, and the Web with AI-powered search!</p>", unsafe_allow_html=True)
 
+# ----------------- Helper: Split text into minimum points -----------------
+def split_into_points(text, min_points=5):
+    points = [p.strip() for p in text.split('. ') if p.strip()]
+    if len(points) < min_points:
+        points += ["N/A"] * (min_points - len(points))
+    return points[:max(len(points), min_points)]
+
 # ----------------- Main App -----------------
 if st.session_state.api_valid:
 
@@ -248,24 +255,13 @@ if st.session_state.api_valid:
 
     # Tools initialization
     def get_tools():
-        arxiv_wrapper = ArxivAPIWrapper(top_k_results=1, doc_content_chars_max=300)
-        wiki_wrapper = WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=300)
+        arxiv_wrapper = ArxivAPIWrapper(top_k_results=5, doc_content_chars_max=500)
+        wiki_wrapper = WikipediaAPIWrapper(top_k_results=5, doc_content_chars_max=500)
         return [
             ArxivQueryRun(api_wrapper=arxiv_wrapper),
             WikipediaQueryRun(api_wrapper=wiki_wrapper),
             DuckDuckGoSearchRun(name="Web Search")
         ]
-
-    # Extract text helper
-    from langchain.docstore.document import Document
-    def extract_text(result):
-        if isinstance(result, str):
-            return result
-        elif isinstance(result, Document):
-            return result.page_content
-        elif isinstance(result, list):
-            return " ".join([extract_text(r) for r in result])
-        return str(result)
 
     # Chat input
     prompt = st.chat_input("💬 Type your question here...")
@@ -274,62 +270,78 @@ if st.session_state.api_valid:
         st.chat_message("user").write(prompt)
 
         try:
-            llm = ChatGroq(groq_api_key=api_key_input, model="llama-3.3-70b-versatile", streaming=True)
+            llm = ChatGroq(groq_api_key=api_key_input, model="gemma2-9b-it", streaming=True)
             tools = get_tools()
             search_agent = initialize_agent(tools, llm, agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION, handle_parsing_errors=True)
             response = search_agent.run(st.session_state.messages)
             st.session_state.messages.append({"role": "assistant", "content": response})
 
             # ----------------- Tabs -----------------
-            tab1, tab2, tab3 = st.tabs(["📚 Arxiv", "🧠 Wikipedia", "🌐 DuckDuckGo"])
+            tab1, tab2, tab3 = st.tabs(["🧠 Wikipedia", "🌐 DuckDuckGo", "📚 Arxiv"])
 
-            # Arxiv
+            # Wikipedia - Tab 1
             with tab1:
-                st.subheader("📚 Arxiv Result")
-                try:
-                    arxiv_result = ArxivQueryRun(api_wrapper=ArxivAPIWrapper(top_k_results=1, doc_content_chars_max=300)).run(prompt)
-                    title = arxiv_result.split('Abstract:')[0].strip() if 'Abstract:' in arxiv_result else "Arxiv Paper"
-                    abstract = arxiv_result.split('Abstract:')[1].strip() if 'Abstract:' in arxiv_result else arxiv_result
-                    st.markdown(f"""
-                    <div class="card card-arxiv">
-                        <h3>📚 {title}</h3>
-                        <p>{abstract}</p>
-                        <a href="https://arxiv.org/search/?query={prompt.replace(' ','+')}" target="_blank">🔗 View on Arxiv</a>
-                        &nbsp;|&nbsp;
-                        <a href="https://arxiv.org/pdf/{prompt.replace(' ','+')}.pdf" target="_blank">📄 Download PDF</a>
-                    </div>
-                    """, unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"Error fetching Arxiv: {str(e)}")
-
-            # Wikipedia
-            with tab2:
                 st.subheader("🧠 Wikipedia Result")
                 try:
-                    wiki_result = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=300)).run(prompt)
+                    wiki_result = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=5, doc_content_chars_max=500)).run(prompt)
+                    points = split_into_points(wiki_result, 5)
                     st.markdown(f"""
                     <div class="card card-wiki">
-                        <h3>🧠 Wikipedia Summary</h3>
-                        <p>{wiki_result}</p>
-                        <a href="https://en.wikipedia.org/wiki/{prompt.replace(' ','_')}" target="_blank">🔗 Read full article on Wikipedia</a>
+                        <h3>🧠 Wikipedia Key Points</h3>
+                        {"<br>".join([f"• {p}" for p in points])}
+                        <br><a href="https://en.wikipedia.org/wiki/{prompt.replace(' ','_')}" target="_blank">🔗 Read full article</a>
                     </div>
                     """, unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Error fetching Wikipedia: {str(e)}")
 
-            # DuckDuckGo
-            with tab3:
+            # DuckDuckGo - Tab 2
+            with tab2:
                 st.subheader("🌐 DuckDuckGo Result")
                 try:
                     duck_result = DuckDuckGoSearchRun(name="Web Search").run(prompt)
-                    results_list = duck_result.split('\n')
-                    for res in results_list:
-                        if res.strip():
-                            st.markdown(f"""
-                            <div class="card card-duck">🌐 {res}</div>
-                            """, unsafe_allow_html=True)
+                    points = split_into_points(duck_result, 5)
+                    st.markdown(f"""
+                    <div class="card card-duck">
+                        <h3>🌐 Web Search Key Points</h3>
+                        {"<br>".join([f"• {p}" for p in points])}
+                    </div>
+                    """, unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Error fetching DuckDuckGo: {str(e)}")
+
+            # Arxiv - Tab 3
+            with tab3:
+                st.subheader("📚 Arxiv Result")
+                try:
+                    arxiv_query = ArxivQueryRun(api_wrapper=ArxivAPIWrapper(top_k_results=5, doc_content_chars_max=500))
+                    arxiv_results = arxiv_query.run(prompt)
+                    points = split_into_points(arxiv_results, 5)
+                    st.markdown(f"""
+                    <div class="card card-arxiv">
+                        <h3>📚 Arxiv Key Points</h3>
+                        {"<br>".join([f"• {p}" for p in points])}
+                        <br><a href="https://arxiv.org/search/?query={prompt.replace(' ','+')}" target="_blank">🔗 View on Arxiv</a>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    # PDF download
+                    try:
+                        arxiv_wrapper = ArxivAPIWrapper(top_k_results=1)
+                        metadata = arxiv_wrapper.arxiv_search(prompt)
+                        if metadata and 'pdf_url' in metadata[0]:
+                            pdf_url = metadata[0]['pdf_url']
+                            st.download_button(
+                                label="📥 Download Arxiv PDF",
+                                data=f"{pdf_url}",
+                                file_name=f"{prompt.replace(' ','_')}.pdf",
+                                mime="application/pdf"
+                            )
+                    except:
+                        pass
+
+                except Exception as e:
+                    st.error(f"Error fetching Arxiv: {str(e)}")
 
         except Exception as e:
             error_msg = f"⚠️ An error occurred: {str(e)}"
