@@ -3,12 +3,12 @@ from langchain_groq import ChatGroq
 from langchain_community.utilities import ArxivAPIWrapper, WikipediaAPIWrapper
 from langchain_community.tools import ArxivQueryRun, WikipediaQueryRun, DuckDuckGoSearchRun
 from langchain.agents import initialize_agent, AgentType
-from langchain.callbacks import StreamlitCallbackHandler
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# ----------------- Page Configuration -----------------
 st.set_page_config(
     page_title="Smart AI Search Engine",
     page_icon="🔍",
@@ -49,7 +49,7 @@ else:
     user_msg_bg = "linear-gradient(145deg, #1b4332, #2d6a4f, #40916c, #52b788)"
     assistant_msg_bg = "linear-gradient(155deg, #264653, #2a9d8f, #e9c46a, #f4a261)"
 
-# ----------------- CSS (backgrounds, chat, cards etc.) -----------------
+# ----------------- CSS Styling -----------------
 st.markdown(f"""
 <style>
 /* Main background */
@@ -203,38 +203,22 @@ div.stButton button:hover {{
     background: linear-gradient(135deg, #ff9a8b, #ffeaa7, #fab1a0);
     border-left: 5px solid #e17055;
 }}
-.card-arxiv h3 {{
-    color: #d63031;
-    font-weight: 700;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-}}
+.card-arxiv h3 {{ color: #d63031; font-weight: 700; }}
 .card-wiki {{
     background: linear-gradient(135deg, #74b9ff, #0984e3, #a29bfe);
     border-left: 5px solid #6c5ce7;
 }}
-.card-wiki h3 {{
-    color: #2d3436;
-    font-weight: 700;
-    text-shadow: 1px 1px 2px rgba(255,255,255,0.3);
-}}
+.card-wiki h3 {{ color: #2d3436; font-weight: 700; }}
 .card-duck {{
     background: linear-gradient(135deg, #fd79a8, #fdcb6e, #e84393);
     border-left: 5px solid #e84393;
 }}
-.card-duck h3 {{
-    color: #2d3436;
-    font-weight: 700;
-    text-shadow: 1px 1px 2px rgba(255,255,255,0.3);
-}}
+.card-duck h3 {{ color: #2d3436; font-weight: 700; }}
+a {{ color:#ff7e5f; text-decoration:none; font-weight:bold; }}
+a:hover {{ text-decoration:underline; }}
 @keyframes slideUp {{
-    from {{
-        opacity: 0;
-        transform: translateY(20px);
-    }}
-    to {{
-        opacity: 1;
-        transform: translateY(0);
-    }}
+    from {{ opacity: 0; transform: translateY(20px); }}
+    to {{ opacity: 1; transform: translateY(0); }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -245,8 +229,10 @@ st.markdown("<p class='subtitle'>Explore knowledge from Arxiv, Wikipedia, and th
 
 # ----------------- Main App -----------------
 if st.session_state.api_valid:
+
     st.sidebar.success("✅ Groq API Key Validated!")
 
+    # Clear chat
     if st.sidebar.button("🧹 Clear Chat History"):
         st.session_state.messages = []
         st.experimental_rerun()
@@ -256,9 +242,21 @@ if st.session_state.api_valid:
             {"role": "assistant", "content": "Hi! I'm your smart search assistant 🤖. Ask me anything!"}
         ]
 
+    # Display chat messages
     for msg in st.session_state.messages:
         st.chat_message(msg["role"]).write(msg["content"])
 
+    # Tools initialization
+    def get_tools():
+        arxiv_wrapper = ArxivAPIWrapper(top_k_results=1, doc_content_chars_max=300)
+        wiki_wrapper = WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=300)
+        return [
+            ArxivQueryRun(api_wrapper=arxiv_wrapper),
+            WikipediaQueryRun(api_wrapper=wiki_wrapper),
+            DuckDuckGoSearchRun(name="Web Search")
+        ]
+
+    # Extract text helper
     from langchain.docstore.document import Document
     def extract_text(result):
         if isinstance(result, str):
@@ -269,85 +267,74 @@ if st.session_state.api_valid:
             return " ".join([extract_text(r) for r in result])
         return str(result)
 
+    # Chat input
     prompt = st.chat_input("💬 Type your question here...")
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         st.chat_message("user").write(prompt)
 
-        tab1, tab2, tab3 = st.tabs(["📚 Arxiv", "🧠 Wikipedia", "🌐 DuckDuckGo"])
+        try:
+            llm = ChatGroq(groq_api_key=api_key_input, model="llama-3.3-70b-versatile", streaming=True)
+            tools = get_tools()
+            search_agent = initialize_agent(tools, llm, agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION, handle_parsing_errors=True)
+            response = search_agent.run(st.session_state.messages)
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
-        # ----------------- Arxiv Tab -----------------
-        with tab1:
-            st.subheader("📚 Arxiv Answer")
-            try:
-                arxiv_result = ArxivQueryRun(api_wrapper=ArxivAPIWrapper(top_k_results=1, doc_content_chars_max=500)).run(prompt)
-                arxiv_content = extract_text(arxiv_result)
-                answer_llm = ChatGroq(groq_api_key=api_key_input, model="llama-3.3-70b-versatile", streaming=True)
-                answer_prompt = f"""
-                User question: {prompt}
-                Based on the following Arxiv paper content, provide a concise answer in numbered points,
-                and also mention the title of the paper it came from.
-                Paper content: {arxiv_content}
-                """
-                with st.chat_message("assistant"):
-                    formatted_answer = answer_llm(answer_prompt).replace('\n','<br>')
-                title = arxiv_content.split('Abstract:')[0].strip() if 'Abstract:' in arxiv_content else "Arxiv Paper"
-                st.markdown(f"""
-                <div class="card card-arxiv">
-                    <h3>📚 {title}</h3>
-                    <p>{formatted_answer}</p>
-                    <a href="https://arxiv.org/search/?query={prompt.replace(' ','+')}" target="_blank">🔗 View Paper on Arxiv</a>
-                </div>
-                """, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error fetching Arxiv: {str(e)}")
+            # ----------------- Tabs -----------------
+            tab1, tab2, tab3 = st.tabs(["📚 Arxiv", "🧠 Wikipedia", "🌐 DuckDuckGo"])
 
-        # ----------------- Wikipedia Tab -----------------
-        with tab2:
-            st.subheader("🧠 Wikipedia Answer")
-            try:
-                wiki_result = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=500)).run(prompt)
-                wiki_content = extract_text(wiki_result)
-                answer_llm = ChatGroq(groq_api_key=api_key_input, model="llama-3.3-70b-versatile", streaming=True)
-                answer_prompt = f"""
-                User question: {prompt}
-                Based on the following Wikipedia content, provide a concise answer in numbered points.
-                Content: {wiki_content}
-                """
-                with st.chat_message("assistant"):
-                    formatted_answer = answer_llm(answer_prompt).replace('\n','<br>')
-                st.markdown(f"""
-                <div class="card card-wiki">
-                    <h3>🧠 Wikipedia Summary</h3>
-                    <p>{formatted_answer}</p>
-                    <a href="https://en.wikipedia.org/wiki/{prompt.replace(' ','_')}" target="_blank">🔗 Read full article on Wikipedia</a>
-                </div>
-                """, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error fetching Wikipedia: {str(e)}")
+            # Arxiv
+            with tab1:
+                st.subheader("📚 Arxiv Result")
+                try:
+                    arxiv_result = ArxivQueryRun(api_wrapper=ArxivAPIWrapper(top_k_results=1, doc_content_chars_max=300)).run(prompt)
+                    title = arxiv_result.split('Abstract:')[0].strip() if 'Abstract:' in arxiv_result else "Arxiv Paper"
+                    abstract = arxiv_result.split('Abstract:')[1].strip() if 'Abstract:' in arxiv_result else arxiv_result
+                    st.markdown(f"""
+                    <div class="card card-arxiv">
+                        <h3>📚 {title}</h3>
+                        <p>{abstract}</p>
+                        <a href="https://arxiv.org/search/?query={prompt.replace(' ','+')}" target="_blank">🔗 View on Arxiv</a>
+                        &nbsp;|&nbsp;
+                        <a href="https://arxiv.org/pdf/{prompt.replace(' ','+')}.pdf" target="_blank">📄 Download PDF</a>
+                    </div>
+                    """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error fetching Arxiv: {str(e)}")
 
-        # ----------------- DuckDuckGo Tab -----------------
-        with tab3:
-            st.subheader("🌐 DuckDuckGo Answer")
-            try:
-                duck_result = DuckDuckGoSearchRun(name="Web Search").run(prompt)
-                duck_content = extract_text(duck_result)
-                answer_llm = ChatGroq(groq_api_key=api_key_input, model="llama-3.3-70b-versatile", streaming=True)
-                answer_prompt = f"""
-                User question: {prompt}
-                Based on the following DuckDuckGo search results, provide a concise answer in numbered points.
-                Results: {duck_content}
-                """
-                with st.chat_message("assistant"):
-                    formatted_answer = answer_llm(answer_prompt).replace('\n','<br>')
-                st.markdown(f"""
-                <div class="card card-duck">
-                    <h3>🌐 DuckDuckGo Results Summary</h3>
-                    <p>{formatted_answer}</p>
-                </div>
-                """, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Error fetching DuckDuckGo: {str(e)}")
+            # Wikipedia
+            with tab2:
+                st.subheader("🧠 Wikipedia Result")
+                try:
+                    wiki_result = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper(top_k_results=1, doc_content_chars_max=300)).run(prompt)
+                    st.markdown(f"""
+                    <div class="card card-wiki">
+                        <h3>🧠 Wikipedia Summary</h3>
+                        <p>{wiki_result}</p>
+                        <a href="https://en.wikipedia.org/wiki/{prompt.replace(' ','_')}" target="_blank">🔗 Read full article on Wikipedia</a>
+                    </div>
+                    """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error fetching Wikipedia: {str(e)}")
+
+            # DuckDuckGo
+            with tab3:
+                st.subheader("🌐 DuckDuckGo Result")
+                try:
+                    duck_result = DuckDuckGoSearchRun(name="Web Search").run(prompt)
+                    results_list = duck_result.split('\n')
+                    for res in results_list:
+                        if res.strip():
+                            st.markdown(f"""
+                            <div class="card card-duck">🌐 {res}</div>
+                            """, unsafe_allow_html=True)
+                except Exception as e:
+                    st.error(f"Error fetching DuckDuckGo: {str(e)}")
+
+        except Exception as e:
+            error_msg = f"⚠️ An error occurred: {str(e)}"
+            st.session_state.messages.append({"role": "assistant", "content": error_msg})
+            st.error(error_msg)
 
 else:
     st.markdown("""
