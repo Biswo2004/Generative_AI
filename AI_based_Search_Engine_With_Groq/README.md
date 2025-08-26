@@ -5,7 +5,7 @@ A **Streamlit-based AI Search Engine** that allows users to explore knowledge fr
 ---
 
 🎥 **Demo Preview:**  
-🚀 [Smart AI Search Engine – Demo](#)  
+🚀 [Smart AI Search Engine – Demo](https://ai-search-engine-with-groq-metaworkforce.streamlit.app/)  
 
 This demo showcases the app in action, key features, and how it enables AI-powered research and knowledge exploration.
 
